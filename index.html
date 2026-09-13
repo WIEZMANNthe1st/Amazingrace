@@ -1,0 +1,583 @@
+<!-- ===================================================================
+     חפש את המטמון — משחק ברקודים לריבוי שחקנים
+     הדביקו כאן את כתובת ה-Firebase Realtime Database שלכם, בין הגרשיים.
+     זו השורה היחידה שצריך לערוך. הוראות מלאות ב-README.md
+     =================================================================== -->
+<script>
+  window.HUNT_DB_URL = "https://race-32fc5-default-rtdb.firebaseio.com";
+</script>
+
+<div id="app" dir="rtl"></div>
+
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@700;800;900&family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+  :root{
+    --space:#040A1C;
+    --space-2:#0A1740;
+    --panel:rgba(10,23,64,.72);
+    --gold:#F2C14E;
+    --gold-hi:#FFF0B8;
+    --gold-lo:#9C6B14;
+    --sky:#4FB3F0;
+    --red:#C0272D;
+    --text:#E7EDFA;
+    --dim:#93A4C6;
+    --line:rgba(242,193,78,.35);
+  }
+  #app *{box-sizing:border-box;}
+  body{background:#040A1C;}
+  #app{
+    font-family:"Assistant",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;
+    color:var(--text);
+    background:
+      radial-gradient(120% 60% at 50% -8%, rgba(79,179,240,.30) 0%, rgba(10,23,64,.55) 38%, rgba(4,10,28,0) 70%),
+      radial-gradient(1.4px 1.4px at 18% 12%, #fff 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 74% 22%, #cfe4ff 50%, transparent 51%),
+      radial-gradient(1.6px 1.6px at 42% 46%, #fff 50%, transparent 51%),
+      radial-gradient(1.2px 1.2px at 88% 68%, #bcd8ff 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 12% 78%, #fff 50%, transparent 51%),
+      linear-gradient(180deg, #061029 0%, #040A1C 60%, #030713 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    max-width:560px;margin:0 auto;padding:22px 16px 60px;
+    line-height:1.5;-webkit-text-size-adjust:100%;
+  }
+  h1,h2,h3{font-family:"Heebo","Assistant",Arial,sans-serif;margin:0;font-weight:900;letter-spacing:-.02em;}
+  h1{
+    background:linear-gradient(178deg,#FFF6CF 6%,#F6CB63 34%,#C88A1C 52%,#F7D477 66%,#FFF3C4 96%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 0 rgba(0,0,0,.45));
+    text-shadow:none;
+  }
+  p{margin:0 0 10px;}
+  button{font-family:inherit;}
+
+  /* progress: pointed banner segments, like a race scoreboard */
+  .blazes{display:flex;gap:5px;margin:16px 0 22px;}
+  .blaze{flex:1;height:16px;background:rgba(255,255,255,.08);
+         border:1px solid rgba(242,193,78,.28);
+         clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);}
+  .blaze i{display:none;}
+  .blaze.done{background:linear-gradient(180deg,#FFE9A6,#E0A62C 55%,#A9760F);border-color:transparent;}
+  .blaze.now{background:linear-gradient(180deg,rgba(79,179,240,.9),rgba(28,108,190,.9));
+             border-color:rgba(180,225,255,.8);
+             box-shadow:0 0 14px rgba(79,179,240,.55);}
+
+  .kicker{font-size:14px;color:var(--sky);font-weight:700;margin-bottom:4px;letter-spacing:.02em;}
+  .card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+        padding:22px 18px;backdrop-filter:blur(3px);
+        box-shadow:0 0 0 1px rgba(255,255,255,.04) inset, 0 14px 34px rgba(0,0,0,.45);}
+  .card::before{content:"";position:absolute;inset:0;border-radius:10px;pointer-events:none;
+        background:linear-gradient(180deg,rgba(255,255,255,.07),transparent 42%);}
+  .card + .card{margin-top:14px;}
+
+  .stationno{font-family:"Heebo","Assistant",sans-serif;font-size:76px;line-height:.9;font-weight:900;
+             display:block;
+             background:linear-gradient(178deg,#FFF6CF 8%,#F6CB63 36%,#C88A1C 54%,#FCE08E 70%,#FFF7D8 96%);
+             -webkit-background-clip:text;background-clip:text;color:transparent;
+             filter:drop-shadow(0 3px 0 rgba(0,0,0,.5));}
+  .place{font-size:19px;font-weight:800;margin-top:6px;color:var(--gold);}
+  .riddle{font-size:23px;line-height:1.6;margin:16px 0 4px;white-space:pre-wrap;font-weight:600;}
+  .hint{font-size:21px;line-height:1.6;font-weight:600;
+        border-right:4px solid var(--gold);padding:6px 14px 6px 0;margin:12px 0 4px;white-space:pre-wrap;
+        background:linear-gradient(270deg,rgba(242,193,78,.12),transparent 80%);}
+
+  label{display:block;font-size:14px;font-weight:700;color:var(--dim);margin:16px 0 6px;}
+  input[type=text],textarea,input[type=number],select{
+    width:100%;padding:13px 14px;font-size:17px;font-family:inherit;color:var(--text);
+    background:rgba(3,9,26,.75);border:1.5px solid rgba(147,164,198,.35);border-radius:6px;}
+  input::placeholder{color:#5E7098;}
+  input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid var(--sky);outline-offset:1px;}
+  textarea{min-height:78px;resize:vertical;line-height:1.5;}
+  .code-in{letter-spacing:.32em;text-align:center;font-size:28px;font-weight:900;padding:16px 10px;color:var(--gold);}
+
+  .btn{display:block;width:100%;margin-top:16px;padding:15px 16px;font-size:18px;font-weight:900;
+       color:#1B1403;border:none;border-radius:7px;cursor:pointer;
+       background:linear-gradient(180deg,#FFEFB6 0%,#F2C14E 46%,#D79E24 54%,#F8DC8C 100%);
+       box-shadow:0 4px 0 #8C6110, 0 10px 22px rgba(0,0,0,.45);}
+  .btn:active{transform:translateY(2px);box-shadow:0 2px 0 #8C6110;}
+  .btn.alt{background:transparent;color:var(--gold);border:1.5px solid var(--line);box-shadow:none;}
+  .btn.alt:active{transform:translateY(1px);}
+  .btn.go{background:linear-gradient(180deg,#E8484D 0%,#C0272D 48%,#8E1519 56%,#D6363B 100%);color:#FFF3D6;
+          box-shadow:0 4px 0 #6C0F12, 0 10px 22px rgba(0,0,0,.45);}
+  .btn.sm{font-size:15px;padding:11px 12px;margin-top:10px;}
+  .row{display:flex;gap:10px;}
+  .row>*{flex:1;}
+
+  .msg{margin-top:12px;padding:11px 13px;border-radius:6px;font-weight:700;font-size:16px;}
+  .msg.bad{background:rgba(192,39,45,.18);color:#FF9B9E;border:1px solid rgba(255,120,124,.45);}
+  .msg.ok{background:rgba(79,179,240,.15);color:#A9DCFF;border:1px solid rgba(79,179,240,.45);}
+  .shake{animation:sh .3s;}
+  @keyframes sh{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+  @media (prefers-reduced-motion:reduce){.shake{animation:none}}
+
+  .opts{display:flex;flex-direction:column;gap:10px;margin-top:18px;}
+  .opt{width:100%;text-align:right;padding:15px 16px;font-size:18px;font-weight:700;line-height:1.35;
+       color:var(--text);background:linear-gradient(180deg,rgba(29,54,112,.85),rgba(11,24,60,.9));
+       border:1.5px solid rgba(242,193,78,.3);border-radius:7px;cursor:pointer;
+       box-shadow:0 3px 0 rgba(0,0,0,.5);}
+  .opt:active{transform:translateY(2px);box-shadow:0 1px 0 rgba(0,0,0,.5);}
+  .opt.wrong{border-color:rgba(255,120,124,.5);color:#FF9B9E;background:rgba(192,39,45,.16);
+             text-decoration:line-through;text-decoration-thickness:1.5px;box-shadow:none;}
+
+  .board{width:100%;border-collapse:collapse;margin-top:8px;}
+  .board td{padding:12px 8px;border-bottom:1px solid rgba(147,164,198,.2);font-size:17px;vertical-align:middle;}
+  .board .pos{font-family:"Heebo",sans-serif;font-weight:900;font-size:25px;width:46px;color:var(--gold);}
+  .board tr:nth-child(1) .pos{font-size:30px;}
+  .board .nm{font-weight:800;}
+  .board .st{font-size:14px;color:var(--dim);font-weight:600;}
+  .board tr.me td{background:rgba(79,179,240,.12);}
+  .board .tm{text-align:left;font-variant-numeric:tabular-nums;font-weight:800;white-space:nowrap;color:var(--gold);}
+
+  .foot{display:flex;gap:16px;justify-content:center;margin-top:28px;flex-wrap:wrap;}
+  .foot a{font-size:15px;color:var(--sky);text-decoration:none;border-bottom:1px solid rgba(79,179,240,.45);
+          cursor:pointer;font-weight:700;padding-bottom:2px;}
+  .tiny{font-size:14px;color:var(--dim);}
+  .qrsheet{display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px;}
+  .qrcard{background:#fff;color:#0A1740;border:2px dashed #0A1740;border-radius:6px;padding:16px;text-align:center;
+          break-inside:avoid;page-break-inside:avoid;}
+  .qrcard h3{font-size:20px;color:#0A1740;}
+  .qrcard .cd{font-size:30px;font-weight:900;letter-spacing:.3em;margin-top:8px;color:#0A1740;}
+  .qrcard .qrbox{display:flex;justify-content:center;margin:12px 0 6px;}
+  .qrcard .tiny{color:#4A5C7A;}
+  .ed{border-top:1px solid rgba(147,164,198,.25);padding-top:12px;margin-top:16px;}
+  .ed h3{font-size:17px;font-weight:800;color:var(--gold);}
+  .card h3{font-size:17px;font-weight:800;color:var(--gold);}
+  .del{background:none;border:none;color:#FF9B9E;font-weight:700;font-size:15px;cursor:pointer;padding:10px 0;}
+  .load{text-align:center;padding:60px 0;color:var(--dim);}
+  @media print{
+    body{background:#fff;}
+    #app{background:#fff;background-image:none;max-width:none;color:#000;}
+    .noprint{display:none !important;}
+    .qrsheet{grid-template-columns:1fr 1fr;}
+  }
+</style>
+
+<script>
+(function(){
+  const $ = (s,r)=> (r||document).querySelector(s);
+  const app = document.getElementById('app');
+  const BLAZE_COLORS = ['#1B54A8','#B33228','#1E7A4F','#E2650B','#6B3FA0','#0E7C86'];
+
+  /* ---------- default course ---------- */
+  const DEFAULT_COURSE = {
+    title:'המרדף הגדול',
+    intro:'חמש תחנות, חידה בכל אחת. סורקים ברקוד, פותרים, ממשיכים. מי שמסיים ראשון — עולה לראש הטבלה.',
+    adminCode:'0000',
+    qrAsLink:false,
+    baseUrl:'',
+    finishText:'הגעתם. המטמון מתחת לספסל שמול השער — קחו פתק אחד לכל קבוצה.',
+    stations:[
+      {place:'נקודת הזינוק', code:'K7M2', type:'text', options:['','','',''], correct:0,
+       riddle:'יש לי מחוגים אבל לא ידיים, יש לי פנים אבל אין לי פה. אני תלוי וממשיך להסתובב.\n\nמה אני?', answers:'שעון', help:'תסתכלו למעלה, על הקיר.', nextHint:'המשיכו לעץ הגדול ביותר בחצר. הברקוד מודבק על הגזע, בגובה העיניים.'},
+      {place:'העץ הגדול', code:'R4D9', type:'choice', options:['בור','הר','גשר','סולם'], correct:0,
+       riddle:'ככל שלוקחים ממני יותר, כך אני נעשה גדול יותר.\n\nמה אני?', answers:'בור,חור', help:'חושבים על משהו שחופרים.', nextHint:'לכו למקום שבו מכניסים מטבע ומקבלים צמא — או שתייה. הברקוד מאחור.'},
+      {place:'מכונת השתייה', code:'T8W5', type:'choice', options:['חודש אחד','ארבעה','12 — לכולם','שבעה'], correct:2,
+       riddle:'לכמה חודשים בשנה יש 28 ימים?', answers:'12,לכולם,כל החודשים,שנים עשר', help:'לא רק לפברואר.', nextHint:'חפשו את המקום שמאחסן ידע אבל לא לומד כלום. הברקוד על המדף התחתון.'},
+      {place:'הספרייה', code:'N2J6', type:'text', options:['','','',''], correct:0,
+       riddle:'אני עולה אבל אף פעם לא יורד. כל שנה אני גדל בדיוק באחד ואף אחד לא יכול לעצור אותי.\n\nמה אני?', answers:'גיל,הגיל', help:'לכל אחד מכם יש אחד כזה.', nextHint:'התחנה האחרונה: השער שדרכו נכנסתם בבוקר. הברקוד על העמוד הימני.'},
+      {place:'השער', code:'Z9Q3', type:'choice', options:['שנייה','האות מ','דקה','ירח מלא'], correct:1,
+       riddle:'מה מגיע פעם אחת בדקה, פעמיים ברגע, ואף פעם לא במאה שנה?', answers:'האות מ,מ,אות מ,האות מם,מם', help:'אל תחפשו זמן — חפשו אותיות.', nextHint:''}
+    ]
+  };
+
+  /* ---------- backend: Firebase Realtime Database over plain REST ----------
+     course  -> /course.json      (חידות, קודים, טקסטים — משותף לכולם)
+     runners -> /runners/<id>.json (שחקן אחד לכל מפתח, בלי דריסות הדדיות)
+     השחקן עצמו נשמר בדפדפן שלו ב-localStorage.                            */
+  const DB = {url:''};
+  let memMe = null;
+  (function initDb(){
+    let u = (window.HUNT_DB_URL||'').trim();
+    if(!u){ try{ u = (localStorage.getItem('hunt.db')||'').trim(); }catch(e){} }
+    DB.url = u.replace(/\/+$/,'');
+  })();
+  function setDb(u){ DB.url = u.trim().replace(/\/+$/,''); try{ localStorage.setItem('hunt.db', DB.url); }catch(e){} }
+  const api = (path, opts) => fetch(DB.url + '/' + path + '.json', opts);
+  const toPath = k => k==='hunt:course' ? 'course'
+                    : (k.indexOf('hunt:runner:')===0 ? 'runners/'+k.slice(12) : null);
+
+  async function sget(k){
+    if(k==='hunt:me'){ try{ return JSON.parse(localStorage.getItem('hunt.me')||'null'); }catch(e){ return memMe; } }
+    try{ const r = await api(toPath(k)); if(!r.ok) return null; return await r.json(); }catch(e){ return null; }
+  }
+  async function sset(k, v){
+    if(k==='hunt:me'){ memMe=v; try{ localStorage.setItem('hunt.me', JSON.stringify(v)); }catch(e){} return true; }
+    try{ const r = await api(toPath(k), {method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(v)}); return r.ok; }
+    catch(e){ return false; }
+  }
+  async function sdel(k){
+    if(k==='hunt:me'){ memMe=null; try{ localStorage.removeItem('hunt.me'); }catch(e){} return; }
+    try{ await api(toPath(k), {method:'DELETE'}); }catch(e){}
+  }
+  async function allRunners(){
+    try{ const r = await api('runners'); if(!r.ok) return []; const o = await r.json();
+         return o ? Object.keys(o).map(k=>o[k]).filter(x=>x&&x.name) : []; }catch(e){ return []; }
+  }
+  async function wipeRunners(){ try{ await api('runners', {method:'DELETE'}); }catch(e){} }
+
+  /* ---------- state ---------- */
+  let course = null, me = null, runner = null, view = 'loading', tmp = {}, poll = null;
+
+  const norm = s => (s||'').toString().trim().toLowerCase()
+      .replace(/[\u0591-\u05C7]/g,'')            // nikud & cantillation
+      .replace(/["'`״׳.,!?־\-–—]/g,'')
+      .replace(/\s+/g,' ');
+  const answerOk = (given, list) => (list||'').split(',').map(a=>norm(a)).filter(Boolean).includes(norm(given));
+  const fmt = ms => { if(ms==null) return '—'; const s=Math.max(0,Math.floor(ms/1000));
+      const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+      return (h? h+':'+String(m).padStart(2,'0') : m) + ':' + String(sec).padStart(2,'0'); };
+  const esc = s => (s||'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+  const rkey = id => 'hunt:runner:' + id;
+  const isChoice = st => st.type === 'choice' && (st.options||[]).filter(o=>(o||'').trim()).length >= 2;
+  const shuffled = n => { const a=[...Array(n).keys()]; for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+
+  async function saveRunner(){ if(runner){ runner.lastAt = Date.now(); await sset(rkey(runner.id), runner); } }
+  async function saveCourse(){ course.updatedAt = Date.now(); return await sset('hunt:course', course); }
+
+  /* ---------- boot ---------- */
+  async function boot(){
+    render();
+    if(!DB.url){ course = JSON.parse(JSON.stringify(DEFAULT_COURSE)); view='setup'; tmp={}; render(); return; }
+    course = await sget('hunt:course');
+    if(course === null){ course = JSON.parse(JSON.stringify(DEFAULT_COURSE)); await saveCourse(); }
+    if(!course || !course.stations || !course.stations.length){ course = JSON.parse(JSON.stringify(DEFAULT_COURSE)); await saveCourse(); }
+    me = await sget('hunt:me');
+    if(me && me.id){ runner = await sget(rkey(me.id)); }
+    view = runner ? (runner.finishedAt ? 'done' : 'play') : 'join';
+    tmp = {};
+    render();
+  }
+
+  /* ---------- render ---------- */
+  function render(){
+    if(view==='loading'){ app.innerHTML = '<div class="load">טוען את המסלול…</div>'; return; }
+    const fn = {join:vJoin, play:vPlay, done:vDone, board:vBoard, admin:vAdmin, qr:vQr, setup:vSetup}[view];
+    app.innerHTML = fn();
+    wire();
+    window.scrollTo(0,0);
+    clearInterval(poll);
+    if(view==='board') poll = setInterval(()=>{ if(view==='board') refreshBoard(); }, 20000);
+  }
+
+  function blazes(idx){
+    return '<div class="blazes">' + course.stations.map((s,i)=>{
+      const c = BLAZE_COLORS[i % BLAZE_COLORS.length];
+      const cls = i < idx ? 'done' : (i===idx ? 'now' : '');
+      return '<span class="blaze '+cls+'" style="--c:'+c+'"><i></i><i style="flex:1"></i><i></i></span>';
+    }).join('') + '</div>';
+  }
+  function foot(extra){
+    return '<div class="foot noprint">'
+      + '<a data-go="board">טבלת הדירוג</a>'
+      + (extra||'')
+      + '<a data-go="admin">ניהול המסלול</a></div>';
+  }
+
+  function vSetup(){
+    return '<div class="kicker">הגדרה חד־פעמית</div>'
+      + '<h1 style="font-size:34px;line-height:1.1">חיבור למסד הנתונים</h1>'
+      + '<div class="card"><p>המשחק שומר את החידות ואת טבלת הדירוג ב-Firebase Realtime Database. '
+      + 'פתחו מסד נתונים חינמי, העתיקו את הכתובת שלו והדביקו כאן.</p>'
+      + '<label for="db">כתובת מסד הנתונים</label>'
+      + '<input type="text" id="db" dir="ltr" placeholder="https://my-hunt-default-rtdb.firebaseio.com">'
+      + '<button class="btn" data-act="savedb">מתחברים</button><div id="msg"></div>'
+      + '<p class="tiny" style="margin-top:16px">כדי שכל השחקנים יתחברו אוטומטית, הדביקו את אותה כתובת בשורת '
+      + 'HUNT_DB_URL בראש הקובץ index.html ודחפו לגיטהאב. ההוראות המלאות ב-README.</p></div>';
+  }
+
+  function vJoin(){
+    return '<div class="kicker">חפש את המטמון</div>'
+      + '<h1 style="font-size:40px;line-height:1.05">'+esc(course.title)+'</h1>'
+      + blazes(-1)
+      + '<div class="card"><p>'+esc(course.intro)+'</p>'
+      + '<label for="nm">איך קוראים לכם? (שם קבוצה או שם פרטי)</label>'
+      + '<input type="text" id="nm" maxlength="24" autocomplete="off" placeholder="הנמרים של כיתה ו׳">'
+      + '<button class="btn go" data-act="join">יוצאים לדרך</button>'
+      + '<div id="msg"></div></div>'
+      + '<p class="tiny" style="margin-top:14px">'+course.stations.length+' תחנות · השעון מתחיל ברגע שתלחצו</p>'
+      + foot();
+  }
+
+  function vPlay(){
+    const i = runner.stationIdx, st = course.stations[i];
+    if(!st){ return '<div class="card"><p>המסלול השתנה. רעננו את הדף.</p></div>'; }
+    let body = '<div class="kicker">'+esc(runner.name)+' · תחנה '+(i+1)+' מתוך '+course.stations.length+'</div>'
+      + blazes(i) + '<div class="card"><span class="stationno">'+String(i+1).padStart(2,'0')+'</span>';
+
+    if(tmp.stage === 'riddle'){
+      body += '<div class="place">'+esc(st.place)+'</div>'
+        + '<div class="riddle">'+esc(st.riddle)+'</div>';
+      if(isChoice(st)){
+        if(!tmp.order) tmp.order = shuffled(st.options.length);
+        body += '<div class="opts">' + tmp.order.map(oi =>
+            '<button class="opt'+(tmp.badOpt===oi?' wrong':'')+'" data-act="choose" data-opt="'+oi+'">'
+            + esc(st.options[oi]) + '</button>').join('') + '</div>';
+      } else {
+        body += '<label for="ans">התשובה שלכם</label>'
+          + '<input type="text" id="ans" autocomplete="off">'
+          + '<button class="btn" data-act="answer">בודקים תשובה</button>';
+      }
+      body += (tmp.wrong>=2 && st.help ? '<button class="btn alt sm" data-act="help">רוצים רמז קטן?</button>' : '')
+        + '<div id="msg">'+(tmp.helpShown && st.help ? '<div class="msg ok">'+esc(st.help)+'</div>' : '')+'</div>';
+    } else if(tmp.stage === 'next'){
+      const last = i === course.stations.length-1;
+      body += '<div class="msg ok">פתרתם את '+esc(st.place)+'</div>'
+        + '<div class="hint">'+esc(last ? course.finishText : st.nextHint)+'</div>'
+        + '<button class="btn go" data-act="advance">'+(last ? 'מסיימים את המרוץ' : 'בדרך לתחנה הבאה')+'</button>';
+    } else {
+      body += '<div class="place">'+(i===0 ? 'הברקוד הראשון נמצא בנקודת הזינוק' : 'הגעתם לתחנה? סרקו את הברקוד')+'</div>'
+        + '<p class="tiny" style="margin-top:8px">פותחים את מצלמת הטלפון, סורקים את הברקוד שבתחנה ומקלידים כאן את הקוד שקיבלתם.</p>'
+        + '<label for="cd">קוד התחנה</label>'
+        + '<input type="text" id="cd" class="code-in" maxlength="8" autocomplete="off" autocapitalize="characters">'
+        + '<button class="btn" data-act="code">פותחים את החידה</button><div id="msg"></div>';
+    }
+    body += '</div>';
+    body += '<p class="tiny" style="margin-top:14px">בדרך מאז '+fmt(Date.now()-runner.startedAt)+'</p>';
+    return body + foot();
+  }
+
+  function vDone(){
+    const t = runner.finishedAt - runner.startedAt;
+    return '<div class="kicker">'+esc(runner.name)+'</div>'
+      + '<h1 style="font-size:38px;line-height:1.1">סיימתם את המסלול</h1>'
+      + blazes(course.stations.length)
+      + '<div class="card"><p class="tiny">זמן המסלול</p>'
+      + '<span class="stationno">'+fmt(t)+'</span>'
+      + '<div class="hint" style="margin-top:16px">'+esc(course.finishText)+'</div>'
+      + '<button class="btn go" data-go="board">לטבלת הדירוג</button></div>'
+      + foot();
+  }
+
+  function vBoard(){
+    const rows = (tmp.rows||[]);
+    let html = '<div class="kicker">'+esc(course.title)+'</div><h1 style="font-size:34px">טבלת הדירוג</h1>';
+    if(!rows.length){ html += '<div class="card"><p>אף אחד לא יצא לדרך עדיין. הראשון שיסרוק ברקוד יופיע כאן.</p></div>'; }
+    else{
+      html += '<div class="card" style="padding:8px 14px"><table class="board"><tbody>';
+      rows.forEach((r,n)=>{
+        const mine = runner && r.id===runner.id;
+        const status = r.finishedAt ? 'סיים' : 'תחנה '+Math.min(r.stationIdx+1, course.stations.length)+' מתוך '+course.stations.length;
+        html += '<tr class="'+(mine?'me':'')+'"><td class="pos">'+(n+1)+'</td>'
+             + '<td><div class="nm">'+esc(r.name)+(mine?' ·':'')+'</div><div class="st">'+status+'</div></td>'
+             + '<td class="tm">'+(r.finishedAt? fmt(r.finishedAt-r.startedAt) : fmt(Date.now()-r.startedAt))+'</td></tr>';
+      });
+      html += '</tbody></table></div>';
+      html += '<p class="tiny" style="margin-top:10px">המסיימים למעלה לפי זמן, אחריהם מי שעדיין בדרך לפי מספר התחנות.</p>';
+    }
+    html += '<button class="btn alt sm" data-act="refresh">רענון</button>';
+    html += '<div class="foot noprint">'
+      + (runner ? '<a data-go="'+(runner.finishedAt?'done':'play')+'">חזרה למסלול</a>' : '<a data-go="join">הצטרפות למרוץ</a>')
+      + '<a data-go="admin">ניהול המסלול</a></div>';
+    return html;
+  }
+
+  async function refreshBoard(){
+    const rows = await allRunners();
+    rows.sort((a,b)=>{
+      if(a.finishedAt && b.finishedAt) return (a.finishedAt-a.startedAt)-(b.finishedAt-b.startedAt);
+      if(a.finishedAt) return -1;
+      if(b.finishedAt) return 1;
+      if(b.stationIdx !== a.stationIdx) return b.stationIdx - a.stationIdx;
+      return a.startedAt - b.startedAt;
+    });
+    tmp.rows = rows;
+    if(view==='board') render();
+  }
+
+  function vAdmin(){
+    if(!tmp.admin){
+      return '<h1 style="font-size:32px">ניהול המסלול</h1>'
+        + '<div class="card"><p class="tiny">אזור המפעיל: עריכת חידות, הדפסת ברקודים ואיפוס המרוץ.</p>'
+        + '<label for="pin">קוד מפעיל</label><input type="text" id="pin" class="code-in" maxlength="8" autocomplete="off">'
+        + '<button class="btn" data-act="pin">כניסה</button><div id="msg"></div></div>'
+        + '<div class="foot noprint"><a data-go="'+(runner? (runner.finishedAt?'done':'play') : 'join')+'">חזרה</a><a data-go="board">טבלת הדירוג</a></div>';
+    }
+    let h = '<h1 style="font-size:32px">ניהול המסלול</h1>'
+      + '<div class="card"><label for="ti">שם המשחק</label><input type="text" id="ti" value="'+esc(course.title)+'">'
+      + '<label for="in">משפט פתיחה לשחקנים</label><textarea id="in">'+esc(course.intro)+'</textarea>'
+      + '<label for="ft">מה כתוב בסיום</label><textarea id="ft">'+esc(course.finishText)+'</textarea>'
+      + '<label for="ac">קוד מפעיל</label><input type="text" id="ac" value="'+esc(course.adminCode)+'">'
+      + '</div>';
+    course.stations.forEach((s,i)=>{
+      h += '<div class="card"><h3>תחנה '+(i+1)+'</h3>'
+        + '<label>שם המקום</label><input type="text" data-f="place" data-i="'+i+'" value="'+esc(s.place)+'">'
+        + '<label>קוד הברקוד</label><input type="text" data-f="code" data-i="'+i+'" value="'+esc(s.code)+'">'
+        + '<label>החידה</label><textarea data-f="riddle" data-i="'+i+'">'+esc(s.riddle)+'</textarea>'
+        + '<label>איך עונים</label>'
+        + '<select data-type="'+i+'"><option value="text"'+(s.type!=='choice'?' selected':'')+'>כתיבה חופשית</option>'
+        + '<option value="choice"'+(s.type==='choice'?' selected':'')+'>בחירה מתוך 4 אפשרויות</option></select>'
+        + (s.type==='choice'
+            ? [0,1,2,3].map(k=>'<label>אפשרות '+(k+1)+(k===(s.correct|0)?' — הנכונה':'')+'</label>'
+                + '<input type="text" data-f="opt'+k+'" data-i="'+i+'" value="'+esc((s.options||[])[k]||'')+'">').join('')
+              + '<label>מי התשובה הנכונה</label><select data-f="correct" data-i="'+i+'">'
+              + [0,1,2,3].map(k=>'<option value="'+k+'"'+(k===(s.correct|0)?' selected':'')+'>אפשרות '+(k+1)+'</option>').join('')
+              + '</select>'
+            : '<label>תשובות מתקבלות (מופרדות בפסיק)</label><input type="text" data-f="answers" data-i="'+i+'" value="'+esc(s.answers)+'">')
+        + '<label>רמז לחידה (נפתח אחרי שתי טעויות)</label><input type="text" data-f="help" data-i="'+i+'" value="'+esc(s.help)+'">'
+        + '<label>ההוראה לתחנה הבאה</label><textarea data-f="nextHint" data-i="'+i+'">'+esc(s.nextHint)+'</textarea>'
+        + '<button class="del" data-act="delst" data-i="'+i+'">מחיקת התחנה</button></div>';
+    });
+    h += '<button class="btn alt" data-act="addst">הוספת תחנה</button>'
+      + '<button class="btn go" data-act="savecourse">שמירת המסלול</button>'
+      + '<div id="msg"></div>'
+      + '<div class="ed"><p class="tiny" dir="ltr" style="text-align:left;word-break:break-all">'+esc(DB.url)+'</p>'
+      + '<button class="btn alt sm" data-go="qr">הדפסת הברקודים לתחנות</button>'
+      + '<button class="btn alt sm" data-act="reset">איפוס המרוץ ומחיקת כל השחקנים</button></div>'
+      + '<div class="foot noprint"><a data-go="board">טבלת הדירוג</a><a data-go="'+(runner?(runner.finishedAt?'done':'play'):'join')+'">חזרה למסלול</a></div>';
+    return h;
+  }
+
+  function vQr(){
+    let h = '<div class="noprint"><h1 style="font-size:30px">ברקודים להדפסה</h1>'
+      + '<p class="tiny">גוזרים ומדביקים כל כרטיס בתחנה שלו. שחקן שסורק מקבל את הקוד ומקליד אותו במשחק.</p>'
+      + '<button class="btn sm" data-act="print">הדפסה</button>'
+      + '<button class="btn alt sm" data-go="admin">חזרה לניהול</button></div><div class="qrsheet">';
+    course.stations.forEach((s,i)=>{
+      h += '<div class="qrcard"><h3>תחנה '+(i+1)+' · '+esc(s.place)+'</h3>'
+        + '<div class="qrbox" id="qr'+i+'"></div>'
+        + '<div class="cd">'+esc(s.code)+'</div>'
+        + '<div class="tiny">סרקו והקלידו את הקוד במשחק</div></div>';
+    });
+    return h + '</div>';
+  }
+
+  function drawQrs(){
+    if(typeof QRCode === 'undefined') return;
+    course.stations.forEach((s,i)=>{
+      const el = document.getElementById('qr'+i); if(!el) return;
+      el.innerHTML='';
+      const text = course.qrAsLink && course.baseUrl ? (course.baseUrl + '#c=' + s.code) : s.code;
+      new QRCode(el, {text:text, width:180, height:180, colorDark:'#0A1740', colorLight:'#ffffff'});
+    });
+  }
+
+  /* ---------- events ---------- */
+  function say(kind, text){ const m=$('#msg'); if(m) m.innerHTML = '<div class="msg '+kind+'">'+esc(text)+'</div>'; }
+
+  function wire(){
+    app.querySelectorAll('[data-go]').forEach(el=> el.onclick = async ()=>{
+      const v = el.getAttribute('data-go');
+      if(v==='board'){ tmp.rows=[]; view='board'; render(); await refreshBoard(); return; }
+      tmp.stage = tmp.stage; view = v; render();
+      if(v==='qr') setTimeout(drawQrs, 60);
+    });
+    app.querySelectorAll('[data-act]').forEach(el=> el.onclick = ()=> act(el.getAttribute('data-act'), el));
+    app.querySelectorAll('[data-type]').forEach(sel=> sel.onchange = ()=>{
+      const idx = +sel.getAttribute('data-type'), val = sel.value;
+      collect();
+      const st = course.stations[idx];
+      st.type = val;
+      if(!st.options || st.options.length<4) st.options = ['','','',''];
+      if(st.correct == null) st.correct = 0;
+      render();
+    });
+    const first = app.querySelector('#nm,#cd,#ans,#pin'); if(first) first.focus({preventScroll:true});
+    app.querySelectorAll('input').forEach(inp=> inp.addEventListener('keydown', e=>{
+      if(e.key==='Enter'){ const b = app.querySelector('.btn[data-act]'); if(b) b.click(); }
+    }));
+  }
+
+  async function act(a, el){
+    if(a==='savedb'){
+      const u = ($('#db').value||'').trim();
+      if(!/^https?:\/\/.+/.test(u)){ say('bad','צריך כתובת מלאה שמתחילה ב-https://'); return; }
+      setDb(u);
+      say('ok','מתחבר…');
+      await boot();
+      return;
+    }
+    if(a==='join'){
+      const name = ($('#nm').value||'').trim();
+      if(name.length < 2){ say('bad','צריך שם כדי להופיע בטבלה.'); return; }
+      me = {id: uid(), name};
+      runner = {id:me.id, name, startedAt:Date.now(), stationIdx:0, finishedAt:null};
+      await sset('hunt:me', me);
+      await saveRunner();
+      tmp={}; view='play'; render();
+    }
+    else if(a==='code'){
+      const v = ($('#cd').value||'').trim();
+      const st = course.stations[runner.stationIdx];
+      if(norm(v) === norm(st.code)){ tmp={stage:'riddle', wrong:0}; render(); }
+      else{ say('bad','הקוד לא מתאים לתחנה הזאת. ודאו שסרקתם את הברקוד הנכון.'); $('#cd').classList.add('shake'); }
+    }
+    else if(a==='answer'){
+      const st = course.stations[runner.stationIdx];
+      if(answerOk($('#ans').value, st.answers)){ tmp={stage:'next'}; render(); }
+      else{ tmp.wrong=(tmp.wrong||0)+1; render(); say('bad', tmp.wrong>=2 ? 'עדיין לא. נסו שוב או בקשו רמז.' : 'לא נכון. תקראו את החידה שוב.'); const i=$('#ans'); if(i) i.classList.add('shake'); }
+    }
+    else if(a==='choose'){
+      const st = course.stations[runner.stationIdx];
+      const pick = +el.getAttribute('data-opt');
+      if(pick === (st.correct|0)){ tmp={stage:'next'}; render(); }
+      else{
+        const order = tmp.order, help = tmp.helpShown;
+        tmp = {stage:'riddle', wrong:(tmp.wrong||0)+1, order:order, helpShown:help, badOpt:pick};
+        render();
+        say('bad', tmp.wrong>=2 ? 'עדיין לא. קראו שוב ובחרו אחרת.' : 'לא זו התשובה. נסו שוב.');
+      }
+    }
+    else if(a==='help'){ tmp.helpShown = true; render(); }
+    else if(a==='advance'){
+      const last = runner.stationIdx === course.stations.length-1;
+      if(last){ runner.finishedAt = Date.now(); await saveRunner(); tmp={}; view='done'; }
+      else{ runner.stationIdx++; await saveRunner(); tmp={}; }
+      render();
+    }
+    else if(a==='refresh'){ await refreshBoard(); }
+    else if(a==='pin'){
+      if(($('#pin').value||'').trim() === (course.adminCode||'').trim()){ tmp.admin=true; render(); }
+      else say('bad','קוד שגוי.');
+    }
+    else if(a==='addst'){
+      collect();
+      course.stations.push({place:'תחנה חדשה', code:'AB'+Math.floor(10+Math.random()*89), type:'text',
+                            options:['','','',''], correct:0, riddle:'', answers:'', help:'', nextHint:''});
+      render();
+    }
+    else if(a==='delst'){
+      collect();
+      course.stations.splice(+el.getAttribute('data-i'),1);
+      if(!course.stations.length) course.stations.push({place:'תחנה 1',code:'A1B2',type:'text',options:['','','',''],correct:0,riddle:'',answers:'',help:'',nextHint:''});
+      render();
+    }
+    else if(a==='savecourse'){
+      collect();
+      const ok = await saveCourse();
+      say(ok?'ok':'bad', ok? 'המסלול נשמר. כל השחקנים יראו אותו.' : 'השמירה נכשלה. נסו שוב בעוד רגע.');
+    }
+    else if(a==='reset'){
+      if(!confirm('למחוק את כל השחקנים והתוצאות? החידות יישארו.')) return;
+      await wipeRunners();
+      await sdel('hunt:me');
+      runner=null; me=null; tmp.admin=true;
+      say('ok','המרוץ אופס. אפשר להתחיל סבב חדש.');
+    }
+    else if(a==='print'){ window.print(); }
+  }
+
+  function collect(){
+    const t=$('#ti'), i=$('#in'), f=$('#ft'), c=$('#ac');
+    if(t) course.title=t.value.trim()||course.title;
+    if(i) course.intro=i.value.trim();
+    if(f) course.finishText=f.value.trim();
+    if(c) course.adminCode=c.value.trim()||'0000';
+    app.querySelectorAll('[data-f]').forEach(el=>{
+      const idx=+el.getAttribute('data-i'), fld=el.getAttribute('data-f'), st=course.stations[idx];
+      if(!st) return;
+      if(/^opt[0-3]$/.test(fld)){
+        if(!st.options || st.options.length<4) st.options=['','','',''];
+        st.options[+fld.slice(3)] = el.value;
+      }
+      else if(fld==='correct') st.correct = +el.value;
+      else st[fld] = el.value;
+    });
+  }
+
+  boot();
+})();
+</script>
